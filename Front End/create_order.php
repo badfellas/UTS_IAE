@@ -10,3 +10,4 @@ $data = [
 $response = postApi('http://localhost:8003/api/orders', $data);
 
 header('Location: index.php');
+exit();

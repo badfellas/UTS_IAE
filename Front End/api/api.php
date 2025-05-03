@@ -16,3 +16,16 @@ function postApi($url, $data) {
     $response = file_get_contents($url, false, $context);
     return json_decode($response, true);
 }
+
+function deleteApi($url, $data) {
+    $options = [
+        'http' => [
+            'method'  => 'DELETE',
+            'header'  => "Content-Type: application/json\r\n",
+            'content' => json_encode($data)
+        ]
+    ];
+    $context = stream_context_create($options);
+    $response = file_get_contents($url, false, $context);
+    return json_decode($response, true);
+}
