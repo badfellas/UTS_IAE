@@ -4,21 +4,37 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use Illuminate\Support\Facades\Http;
+use App\Jobs\NotifyProduct;
 
-class OrderController extends Controller {
-    public function index() {
+class OrderController extends Controller
+{
+    public function index()
+    {
         return response()->json(Order::all());
     }
 
-    public function show($id) {
+    public function show($id)
+    {
         $order = Order::find($id);
-        if (!$order) return response()->json(['message' => 'Order not found'], 404);
+        if (!$order)
+            return response()->json(['message' => 'Order not found'], 404);
         return response()->json($order);
     }
 
-    public function store(Request $request) {
-        $user = Http::get('http://localhost:8001/api/users/'.$request->user_id)->json();
-        $product = Http::get('http://localhost:8002/api/products/'.$request->product_id)->json();
+    public function store(Request $request)
+    {
+        $userServiceUrl = env('USER_SERVICE_URL');
+        $productServiceUrl = env('PRODUCT_SERVICE_URL');
+
+        $userResponse = Http::get("$userServiceUrl/api/users/{$request->user_id}");
+        $productResponse = Http::get("$productServiceUrl/api/products/{$request->product_id}");
+
+        if (!$userResponse->successful() || !$productResponse->successful()) {
+            return response()->json(['error' => 'User or product not found'], 404);
+        }
+
+        $user = $userResponse->json();
+        $product = $productResponse->json();
 
         $order = Order::create([
             'user_id' => $user['id'],
@@ -30,20 +46,27 @@ class OrderController extends Controller {
             'total' => $product['price'] * $request->quantity,
         ]);
 
+        // Kirim job ke queue setelah order dibuat
+        // NotifyProduct::dispatch($order);
+
         return response()->json($order, 201);
     }
 
-    public function update(Request $request, $id) {
+    public function update(Request $request, $id)
+    {
         $order = Order::find($id);
-        if (!$order) return response()->json(['message' => 'Order not found'], 404);
+        if (!$order)
+            return response()->json(['message' => 'Order not found'], 404);
 
         $order->update($request->only(['quantity', 'total']));
         return response()->json($order);
     }
 
-    public function destroy($id) {
+    public function destroy($id)
+    {
         $order = Order::find($id);
-        if (!$order) return response()->json(['message' => 'Order not found'], 404);
+        if (!$order)
+            return response()->json(['message' => 'Order not found'], 404);
         $order->delete();
         return response()->json(['message' => 'Order deleted']);
     }

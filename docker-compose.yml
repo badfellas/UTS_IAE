@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  user-service:
+    container_name: user-service
+    build:
+      context: ./UserService
+    ports:
+      - "8001:8000"
+    depends_on:
+      - redis
+      - mysql
+    networks:
+      - microservices-net
+
+  product-service:
+    container_name: product-service
+    build:
+      context: ./ProductService
+    ports:
+      - "8002:8000"
+    depends_on:
+      - redis
+      - mysql
+    networks:
+      - microservices-net
+
+  order-service:
+    container_name: order-service
+    build:
+      context: ./OrderService
+    ports:
+      - "8003:8000"
+    depends_on:
+      - redis
+      - mysql
+    networks:
+      - microservices-net
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-net
+
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    networks:
+      - microservices-net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - "8088:80"
+    depends_on:
+      - mysql
+    networks:
+      - microservices-net
+
+networks:
+  microservices-net:
+    driver: bridge
