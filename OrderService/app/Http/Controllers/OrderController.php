@@ -25,7 +25,9 @@ class OrderController extends Controller
     {
         $userServiceUrl = env('USER_SERVICE_URL');
         $productServiceUrl = env('PRODUCT_SERVICE_URL');
+        $inventoryServiceUrl = env('INVENTORY_SERVICE_URL');
 
+        // Ambil user
         $userResponse = Http::get("$userServiceUrl/api/users/{$request->user_id}");
         $productResponse = Http::get("$productServiceUrl/api/products/{$request->product_id}");
 
@@ -36,6 +38,27 @@ class OrderController extends Controller
         $user = $userResponse->json();
         $product = $productResponse->json();
 
+        // Ambil stok dari InventoryService
+        $inventoryResponse = Http::get("$inventoryServiceUrl/api/inventories/{$product['id']}");
+
+        if (!$inventoryResponse->successful()) {
+            return response()->json(['error' => 'Inventory not found'], 404);
+        }
+
+        $inventory = $inventoryResponse->json();
+        $currentStock = $inventory['stock'];
+
+        if ($currentStock < $request->quantity) {
+            return response()->json(['error' => 'Stock not sufficient'], 400);
+        }
+
+        // Kurangi stok
+        $newStock = $currentStock - $request->quantity;
+        Http::put("$inventoryServiceUrl/api/inventories/{$product['id']}", [
+            'stock' => $newStock
+        ]);
+
+        // Simpan order
         $order = Order::create([
             'user_id' => $user['id'],
             'user_name' => $user['name'],
@@ -46,11 +69,9 @@ class OrderController extends Controller
             'total' => $product['price'] * $request->quantity,
         ]);
 
-        // Kirim job ke queue setelah order dibuat
-        // NotifyProduct::dispatch($order);
-
         return response()->json($order, 201);
     }
+
 
     public function update(Request $request, $id)
     {

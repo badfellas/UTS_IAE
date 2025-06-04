@@ -37,6 +37,18 @@ services:
     networks:
       - microservices-net
 
+  inventory-service:
+    container_name: inventory-service
+    build:
+      context: ./InventoryService
+    ports:
+      - "8004:8000"
+    depends_on:
+      - redis
+      - mysql
+    networks:
+      - microservices-net
+
   redis:
     image: redis:alpine
     ports:
